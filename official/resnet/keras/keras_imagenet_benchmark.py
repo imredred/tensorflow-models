@@ -21,9 +21,7 @@ import time
 from absl import flags
 import tensorflow as tf  # pylint: disable=g-bad-import-order
 
-from official.resnet import imagenet_main
 from official.resnet.keras import keras_benchmark
-from official.resnet.keras import keras_common
 from official.resnet.keras import keras_imagenet_main
 
 MIN_TOP_1_ACCURACY = 0.76
@@ -46,10 +44,7 @@ class Resnet50KerasAccuracy(keras_benchmark.KerasBenchmark):
                 named arguments before updating the constructor.
     """
 
-    flag_methods = [
-        keras_common.define_keras_flags,
-        lambda: imagenet_main.define_imagenet_flags(dynamic_loss_scale=True)
-    ]
+    flag_methods = [keras_imagenet_main.define_imagenet_keras_flags]
 
     self.data_dir = os.path.join(root_data_dir, 'imagenet')
     super(Resnet50KerasAccuracy, self).__init__(
@@ -206,10 +201,7 @@ class Resnet50KerasBenchmarkBase(keras_benchmark.KerasBenchmark):
   """Resnet50 benchmarks."""
 
   def __init__(self, output_dir=None, default_flags=None):
-    flag_methods = [
-        keras_common.define_keras_flags,
-        lambda: imagenet_main.define_imagenet_flags(dynamic_loss_scale=True)
-    ]
+    flag_methods = [keras_imagenet_main.define_imagenet_keras_flags]
 
     super(Resnet50KerasBenchmarkBase, self).__init__(
         output_dir=output_dir,
@@ -239,6 +231,20 @@ class Resnet50KerasBenchmarkBase(keras_benchmark.KerasBenchmark):
     FLAGS.enable_eager = True
     FLAGS.distribution_strategy = 'off'
     FLAGS.model_dir = self._get_model_dir('benchmark_1_gpu_no_dist_strat')
+    FLAGS.batch_size = 128
+    self._run_and_report_benchmark()
+
+  def benchmark_1_gpu_no_dist_strat_tweaked(self):
+    """Test with 1 GPU, no distribution strategy, and manual tuning."""
+    self._setup()
+
+    FLAGS.num_gpus = 1
+    FLAGS.explicit_gpu_placement = True
+    FLAGS.enable_eager = True
+    FLAGS.distribution_strategy = 'off'
+    FLAGS.set_learning_phase_to_train = False
+    FLAGS.model_dir = self._get_model_dir(
+        'benchmark_1_gpu_no_dist_strat_tweaked')
     FLAGS.batch_size = 128
     self._run_and_report_benchmark()
 
@@ -1153,10 +1159,8 @@ class TrivialKerasBenchmarkReal(keras_benchmark.KerasBenchmark):
   """Trivial model with real data benchmark tests."""
 
   def __init__(self, output_dir=None, root_data_dir=None, **kwargs):
-    flag_methods = [
-        keras_common.define_keras_flags,
-        lambda: imagenet_main.define_imagenet_flags(dynamic_loss_scale=True)
-    ]
+    flag_methods = [keras_imagenet_main.define_imagenet_keras_flags]
+
     def_flags = {}
     def_flags['use_trivial_model'] = True
     def_flags['skip_eval'] = True
